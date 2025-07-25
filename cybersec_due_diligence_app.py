@@ -4,8 +4,13 @@ import subprocess
 import openai
 import os
 
-# Set your OpenAI API key (ensure it's set in your environment for security)
-openai.api_key = os.getenv('OPENAI_API_KEY')
+# Remove any hardcoded API key for security
+api_key = os.getenv('OPENAI_API_KEY')
+if not api_key:
+    import streamlit as st
+    st.error("OpenAI API key not found. Please set the OPENAI_API_KEY environment variable before running the app.")
+    st.stop()
+openai.api_key = api_key
 
 def run_nmap_scan(target):
     nm = nmap.PortScanner()
@@ -58,7 +63,24 @@ def main():
     st.title("AI-Powered Cybersecurity Due Diligence Tool")
     st.write("Enter a domain or IP to scan for open ports, vulnerabilities, and get an AI-generated risk summary.")
 
-    domain = st.text_input("Target Domain or IP", "example.com")
+    # Preset domain buttons
+    preset_domains = [
+        ("scanme.nmap.org", "Official Nmap test server. Designed for scanning!"),
+        ("example.com", "Standard test domain, but may have few/no open ports."),
+        ("testphp.vulnweb.com", "Intentionally vulnerable web app for security testing."),
+        ("httpbin.org", "Public HTTP request/response service."),
+        ("demo.testfire.net", "Demo banking site for security testing."),
+        ("localhost", "Your own machine.")
+    ]
+    if 'domain' not in st.session_state:
+        st.session_state['domain'] = "example.com"
+
+    cols = st.columns(len(preset_domains))
+    for i, (domain_val, domain_desc) in enumerate(preset_domains):
+        if cols[i].button(domain_val, help=domain_desc):
+            st.session_state['domain'] = domain_val
+
+    domain = st.text_input("Target Domain or IP", st.session_state['domain'], key="domain_input")
     if st.button("Scan"):
         with st.spinner('Running Nmap scan...'):
             nmap_results = run_nmap_scan(domain)
