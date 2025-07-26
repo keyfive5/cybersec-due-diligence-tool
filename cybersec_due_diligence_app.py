@@ -3,13 +3,52 @@ import nmap
 import subprocess
 import openai
 import os
+from dotenv import load_dotenv
 
-# Remove any hardcoded API key for security
+# Try multiple ways to get the API key
+api_key = None
+
+# Method 1: Check environment variable
 api_key = os.getenv('OPENAI_API_KEY')
+
+# Method 2: Try to load .env file safely
 if not api_key:
-    import streamlit as st
-    st.error("OpenAI API key not found. Please set the OPENAI_API_KEY environment variable before running the app.")
-    st.stop()
+    try:
+        load_dotenv()
+        api_key = os.getenv('OPENAI_API_KEY')
+    except Exception:
+        # If .env loading fails, try manual file reading
+        try:
+            with open('.env', 'r', encoding='utf-8') as f:
+                for line in f:
+                    if line.startswith('OPENAI_API_KEY='):
+                        api_key = line.split('=', 1)[1].strip()
+                        break
+        except (FileNotFoundError, UnicodeDecodeError):
+            pass
+
+# Method 3: Allow manual input in Streamlit
+if not api_key:
+    st.sidebar.header("OpenAI API Configuration")
+    api_key = st.sidebar.text_input(
+        "Enter your OpenAI API Key", 
+        type="password",
+        help="You can also set the OPENAI_API_KEY environment variable or create a .env file"
+    )
+    
+    if not api_key:
+        st.error("OpenAI API key is required. Please enter your API key in the sidebar or set the OPENAI_API_KEY environment variable.")
+        st.info("""
+        **How to set up your API key:**
+        
+        1. **Sidebar input (temporary):** Enter your key in the sidebar above
+        2. **Environment variable:** Set `OPENAI_API_KEY=your_key_here` in your system
+        3. **Create a .env file:** Add `OPENAI_API_KEY=your_key_here` to a .env file in this directory
+        
+        Get your API key from: https://platform.openai.com/api-keys
+        """)
+        st.stop()
+
 openai.api_key = api_key
 
 def run_nmap_scan(target):
